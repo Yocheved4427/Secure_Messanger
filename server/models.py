@@ -71,6 +71,3 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
-def create_tables():
-    """Creates all tables in the database if they don't exist yet."""
-    Base.metadata.create_all(bind=engine)
