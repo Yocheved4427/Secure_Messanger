@@ -10,6 +10,7 @@ WHAT IS A SCHEMA?
 """
 
 from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel, Field
 
 
@@ -37,15 +38,20 @@ class TokenResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 class SendMessageRequest(BaseModel):
-    content:   str = Field(min_length=1, max_length=2000)
-    recipient: str = Field(min_length=3, max_length=50)
+    content:    str        = Field(min_length=1, max_length=2000)
+    recipients: list[str]  = Field(min_length=1)
+
+
+class EditMessageRequest(BaseModel):
+    content: str = Field(min_length=1, max_length=2000)
 
 
 class MessageResponse(BaseModel):
     id:         int
     sender:     str
     recipient:  str
-    content:    str       # always decrypted plain text — never expose ciphertext
+    content:    str               # always decrypted plain text — never expose ciphertext
     created_at: datetime
+    updated_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}

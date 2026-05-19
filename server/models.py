@@ -25,7 +25,7 @@ THE TWO TABLES:
 
 from datetime import datetime, timezone
 
-from sqlalchemy import create_engine, String, Text, DateTime
+from sqlalchemy import Boolean, create_engine, Integer, String, Text, DateTime
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 
@@ -55,19 +55,22 @@ class Base(DeclarativeBase):
 class User(Base):
     __tablename__ = "users"
 
-    id:            Mapped[int]      = mapped_column(primary_key=True)
-    username:      Mapped[str]      = mapped_column(String(50), unique=True, nullable=False, index=True)
-    password_hash: Mapped[str]      = mapped_column(String(255), nullable=False)
-    created_at:    Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    id:             Mapped[int]      = mapped_column(primary_key=True)
+    username:       Mapped[str]      = mapped_column(String(50), unique=True, nullable=False, index=True)
+    password_hash:  Mapped[str]      = mapped_column(String(255), nullable=False)
+    login_version:  Mapped[int]      = mapped_column(Integer, default=1, nullable=False)
+    created_at:     Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class Message(Base):
     __tablename__ = "messages"
 
-    id:         Mapped[int]      = mapped_column(primary_key=True)
-    sender:     Mapped[str]      = mapped_column(String(50), nullable=False, index=True)
-    recipient:  Mapped[str]      = mapped_column(String(50), nullable=False, index=True)
-    ciphertext: Mapped[str]      = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    id:         Mapped[int]           = mapped_column(primary_key=True)
+    sender:     Mapped[str]           = mapped_column(String(50), nullable=False, index=True)
+    recipient:  Mapped[str]           = mapped_column(String(50), nullable=False, index=True)
+    ciphertext: Mapped[str]           = mapped_column(Text, nullable=False)
+    is_deleted: Mapped[bool]          = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime]      = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime|None] = mapped_column(DateTime, nullable=True)
 
 

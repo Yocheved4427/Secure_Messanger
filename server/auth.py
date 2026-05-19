@@ -25,6 +25,9 @@ import bcrypt
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.orm import Session
+
+from .models import User, get_db
 
 
 SECRET_KEY = "change-this-to-a-long-random-string-in-production"
@@ -44,31 +47,47 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
-def create_token(username: str) -> str:
-    """Build a signed JWT with the username and expiry time."""
+def create_token(username: str, login_version: int) -> str:
+    """Build a signed JWT with the username, login_version, and expiry time."""
     expire = datetime.now(timezone.utc) + timedelta(hours=TOKEN_EXPIRE_HOURS)
-    payload = {"sub": username, "exp": expire}
+    payload = {"sub": username, "ver": login_version, "exp": expire}
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def decode_token(token: str) -> Optional[str]:
-    """Decode the token and return the username. Return None if invalid/expired."""
+def decode_token(token: str) -> Optional[tuple[str, int]]:
+    """
+    Decode the token and return (username, login_version).
+    Returns None if the token is invalid or expired.
+    """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload.get("sub")
+        username = payload.get("sub")
+        version  = payload.get("ver", 1)
+        if username is None:
+            return None
+        return username, version
     except JWTError:
         return None
 
 
-def require_auth(credentials: HTTPAuthorizationCredentials = Depends(_bearer)) -> str:
+def require_auth(
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+    db: Session = Depends(get_db),
+) -> str:
     """
-    FastAPI dependency: extract the Bearer token, validate it, return username.
-    Raises HTTP 401 if the token is missing, invalid, or expired.
+    FastAPI dependency: validate the Bearer token AND verify that
+    the login_version in the JWT still matches the one in the DB.
+    Raises HTTP 401 on any mismatch (invalid token, expired, or session revoked).
+    Returns the username on success.
     """
-    username = decode_token(credentials.credentials)
-    if username is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-        )
+    decoded = decode_token(credentials.credentials)
+    if decoded is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Invalid or expired token")
+    username, token_version = decoded
+
+    user = db.query(User).filter(User.username == username).first()
+    if user is None or user.login_version != token_version:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Session invalidated — please log in again")
     return username
