@@ -126,11 +126,15 @@ def _sse_listener(base_url: str, token: str, my_username: str, stop_event: threa
 # Message sender (main thread)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _send_message(base_url: str, token: str, recipient: str, content: str) -> None:
+def _send_message(base_url: str, token: str, recipient_str: str, content: str) -> None:
     headers = {"Authorization": f"Bearer {token}"}
+    
+ 
+    recipients_list = [r.strip() for r in recipient_str.split(",") if r.strip()]
+    
     r = httpx.post(
         f"{base_url}/messages",
-        json={"recipient": recipient, "content": content},
+        json={"recipients": recipients_list, "content": content},
         headers=headers,
     )
     if r.status_code not in (200, 201):
@@ -187,18 +191,22 @@ def main() -> None:
                 break
 
             if ":" not in line:
-                print("  [?] Format: recipient: message text")
-                continue
+                # אם אין נקודתיים, נגדיר את הנמען כ"כולם" וההודעה היא כל השורה
+                recipient_str = "all"
+                content = line
+            else:
+                # אם יש נקודתיים, נשמור על המנגנון הפרטי (נמען: הודעה)
+                recipient_str, _, content = line.partition(":")
 
-            recipient, _, content = line.partition(":")
-            recipient = recipient.strip()
+            recipient_str = recipient_str.strip()
             content   = content.strip()
 
-            if not recipient or not content:
-                print("  [?] Both recipient and message are required.")
+            if not content:
+                print("  [?] Message cannot be empty.")
                 continue
 
-            _send_message(base_url, token, recipient, content)
+            
+            _send_message(base_url, token, recipient_str, content)
 
     except KeyboardInterrupt:
         pass

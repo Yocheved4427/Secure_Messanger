@@ -67,8 +67,13 @@ async def send_messages(
     Encrypt content once, persist one Message row per recipient,
     then push SSE events to each recipient and the sender.
     """
+    
+    if "all" in recipients:
+        recipients = repo.get_all_usernames(db)
+        
     ciphertext = encrypt(content)
     responses: list[MessageResponse] = []
+    
 
     for recipient in recipients:
         msg = repo.create_message(db, sender, recipient, ciphertext)

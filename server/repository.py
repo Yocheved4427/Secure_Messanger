@@ -42,7 +42,10 @@ def increment_login_version(db: Session, user: User) -> int:
     db.commit()
     db.refresh(user)
     return user.login_version
-
+def get_all_usernames(db: Session) -> list[str]:
+    """שולף את כל שמות המשתמשים הרשומים במסד הנתונים"""
+    users = db.query(User).all()
+    return [user.username for user in users]
 
 # ---------------------------------------------------------------------------
 # Message queries
